@@ -67,22 +67,16 @@ import { UsersListComponent } from './components/users/users-list.component';
       ></app-sidebar>
 
       <main class="main-content">
-        <!-- Dashboard -->
         <app-dashboard *ngIf="currentView === 'dashboard'"></app-dashboard>
-
-        <!-- Kanban Board -->
         <app-kanban-board *ngIf="currentView === 'kanban'"></app-kanban-board>
 
-        <!-- Tasks List View -->
         <div *ngIf="currentView === 'tasks'" class="tasks-view">
           <div class="tasks-header">
             <div class="header-content">
               <h1>Tasks</h1>
               <p>Manage and organize your tasks</p>
             </div>
-            <button class="btn btn-primary" (click)="openCreateForm()">
-              ➕ New Task
-            </button>
+            <button class="btn btn-primary" (click)="openCreateForm()">➕ New Task</button>
           </div>
 
           <app-task-filters (filtersChange)="onFiltersChange($event)"></app-task-filters>
@@ -108,9 +102,7 @@ import { UsersListComponent } from './components/users/users-list.component';
                 <div class="no-tasks-icon">📝</div>
                 <h3>{{ getNoTasksMessage() }}</h3>
                 <p>{{ getNoTasksDescription() }}</p>
-                <button class="btn btn-primary" (click)="openCreateForm()">
-                  Create your first task
-                </button>
+                <button class="btn btn-primary" (click)="openCreateForm()">Create your first task</button>
               </div>
             </ng-template>
           </div>
@@ -123,13 +115,8 @@ import { UsersListComponent } from './components/users/users-list.component';
           ></app-task-form>
         </div>
 
-        <!-- Chat -->
         <app-chat *ngIf="currentView === 'chat'"></app-chat>
-
-        <!-- Users Management -->
         <app-users-list *ngIf="currentView === 'users'"></app-users-list>
-
-        <!-- User Profile -->
         <app-user-profile *ngIf="currentView === 'profile'"></app-user-profile>
       </main>
     </div>
@@ -224,13 +211,6 @@ import { UsersListComponent } from './components/users/users-list.component';
       margin-bottom: 2rem;
     }
 
-    .tasks-list-header h2 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--color-text);
-    }
-
     .tasks-count {
       background: var(--color-primary);
       color: white;
@@ -254,19 +234,6 @@ import { UsersListComponent } from './components/users/users-list.component';
     .no-tasks-icon {
       font-size: 4rem;
       margin-bottom: 1rem;
-    }
-
-    .no-tasks h3 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--color-text);
-    }
-
-    .no-tasks p {
-      margin: 0 0 2rem 0;
-      color: var(--color-text-secondary);
-      font-size: 1rem;
     }
 
     @media (max-width: 768px) {
@@ -303,34 +270,18 @@ import { UsersListComponent } from './components/users/users-list.component';
   `]
 })
 export class App implements OnInit {
-  // Authentication
-  authState: AuthState = {
-    user: null,
-    isAuthenticated: false,
-    isLoading: false
-  };
+  authState: AuthState = { user: null, isAuthenticated: false, isLoading: false };
   authMode: 'login' | 'register' = 'login';
-
-  // Navigation
   currentView = 'dashboard';
   sidebarCollapsed = false;
 
-  // Tasks
   tasks: Task[] = [];
   filteredTasks: Task[] = [];
   showTaskForm = false;
   editingTask: Task | null = null;
-  currentFilters: TaskFilter = {
-    sortBy: 'createdAt',
-    sortOrder: 'desc'
-  };
+  currentFilters: TaskFilter = { sortBy: 'createdAt', sortOrder: 'desc' };
 
-  // Chat
-  chatState: ChatState = {
-    messages: [],
-    isLoading: false,
-    unreadCount: 0
-  };
+  chatState: ChatState = { messages: [], isLoading: false, unreadCount: 0 };
 
   constructor(
     private authService: AuthService,
@@ -340,39 +291,24 @@ export class App implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Initialize theme
     this.themeService.getCurrentTheme().subscribe();
-
-    // Monitor authentication state
-    this.authService.getAuthState().subscribe(state => {
-      this.authState = state;
-    });
-
-    // Monitor tasks
+    this.authService.getAuthState().subscribe(state => (this.authState = state));
     this.taskService.getTasks().subscribe(tasks => {
       this.tasks = tasks;
       this.applyFilters();
     });
-
-    // Monitor chat
-    this.chatService.getChatState().subscribe(state => {
-      this.chatState = state;
-    });
+    this.chatService.getChatState().subscribe(state => (this.chatState = state));
   }
 
-  // Navigation
   navigateToView(view: string) {
     this.currentView = view;
-    if (view === 'chat') {
-      this.chatService.markAsRead();
-    }
+    if (view === 'chat') this.chatService.markAsRead();
   }
 
   onSidebarToggle(collapsed: boolean) {
     this.sidebarCollapsed = collapsed;
   }
 
-  // Tasks Management
   openCreateForm() {
     this.editingTask = null;
     this.showTaskForm = true;
@@ -407,13 +343,11 @@ export class App implements OnInit {
     const task = this.tasks.find(t => t.id === taskId);
     this.taskService.deleteTask(taskId);
     if (task) {
-      this.chatService.sendSystemMessage(
-        `Task "${task.title}" was deleted`
-      );
+      this.chatService.sendSystemMessage(`Task "${task.title}" was deleted`);
     }
   }
 
-  updateTaskStatus(event: { id: string, status: TaskStatus }) {
+  updateTaskStatus(event: { id: string; status: TaskStatus }) {
     const task = this.tasks.find(t => t.id === event.id);
     this.taskService.updateTask(event.id, { status: event.status });
     if (task) {
@@ -429,20 +363,14 @@ export class App implements OnInit {
     this.applyFilters();
   }
 
- applyFilters() {
-  this.taskService.getFilteredTasks(this.currentFilters).subscribe(tasks => {
-    this.filteredTasks = tasks;
-  });
-}
+  applyFilters() {
+    this.filteredTasks = this.taskService.getFilteredTasks(this.currentFilters);
+  }
 
-
-  // Helper methods
   getTasksTitle(): string {
-    if (this.currentFilters.search) {
-      return `Search Results for "${this.currentFilters.search}"`;
-    }
+    if (this.currentFilters.search) return `Search Results for "${this.currentFilters.search}"`;
     if (this.currentFilters.status) {
-      const statusLabels = {
+      const statusLabels: Record<TaskStatus, string> = {
         'todo': 'To Do Tasks',
         'in-progress': 'In Progress Tasks',
         'completed': 'Completed Tasks'
@@ -453,25 +381,21 @@ export class App implements OnInit {
   }
 
   getNoTasksMessage(): string {
-    if (this.currentFilters.search || this.currentFilters.status || 
-        this.currentFilters.priority || this.currentFilters.category) {
-      return 'No tasks match your filters';
-    }
-    return this.tasks.length === 0 ? 'No tasks yet' : 'No tasks found';
+    const hasFilters = this.currentFilters.search || this.currentFilters.status || this.currentFilters.priority || this.currentFilters.category;
+    return hasFilters ? 'No tasks match your filters' : this.tasks.length === 0 ? 'No tasks yet' : 'No tasks found';
   }
 
   getNoTasksDescription(): string {
-    if (this.currentFilters.search || this.currentFilters.status || 
-        this.currentFilters.priority || this.currentFilters.category) {
-      return 'Try adjusting your filters to see more results.';
-    }
-    return this.tasks.length === 0 ? 
-      'Create your first task to get started with managing your workflow.' :
-      'Try adjusting your search criteria.';
+    const hasFilters = this.currentFilters.search || this.currentFilters.status || this.currentFilters.priority || this.currentFilters.category;
+    return hasFilters
+      ? 'Try adjusting your filters to see more results.'
+      : this.tasks.length === 0
+        ? 'Create your first task to get started with managing your workflow.'
+        : 'Try adjusting your search criteria.';
   }
 
   getStatusLabel(status: TaskStatus): string {
-    const labels = {
+    const labels: Record<TaskStatus, string> = {
       'todo': 'To Do',
       'in-progress': 'In Progress',
       'completed': 'Completed'

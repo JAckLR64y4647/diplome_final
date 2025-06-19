@@ -1,91 +1,137 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Task, TaskFilter } from '../models/task.model';
-import { map } from 'rxjs/operators';
+import { Task, TaskStatus, TaskPriority, TaskFilter } from '../models/task.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TaskService {
+  private tasks: Task[] = [];
   private tasksSubject = new BehaviorSubject<Task[]>([]);
-  private readonly BASE_URL = 'https://r9j9iupnri.execute-api.eu-north-1.amazonaws.com/585duu6/tasks';
-  API_URL: any;
+  private readonly STORAGE_KEY = 'task-management-tasks';
 
-  constructor(private http: HttpClient) {
-    this.fetchTasks();
+  constructor() {
+    this.loadTasksFromStorage();
   }
 
   getTasks(): Observable<Task[]> {
     return this.tasksSubject.asObservable();
   }
 
-  fetchTasks(): void {
-    this.http.get<Task[]>(this.BASE_URL).subscribe({
-      next: tasks => this.tasksSubject.next(tasks),
-      error: err => console.error('Fetch tasks failed', err)
-    });
-  }
+  addTask(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): void {
+    const task: Task = {
+      ...taskData,
+      id: this.generateId(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
 
-  addTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): void {
-    this.http.post<Task>(this.BASE_URL, task).subscribe({
-      next: () => this.fetchTasks(),
-      error: err => console.error('Add task failed', err)
-    });
+    this.tasks.unshift(task);
+    this.updateTasksSubject();
+    this.saveTasksToStorage();
   }
 
   updateTask(id: string, updates: Partial<Task>): void {
-    this.http.put(`${this.BASE_URL}/${id}`, updates).subscribe({
-      next: () => this.fetchTasks(),
-      error: err => console.error('Update task failed', err)
-    });
+    const index = this.tasks.findIndex(task => task.id === id);
+    if (index !== -1) {
+      this.tasks[index] = {
+        ...this.tasks[index],
+        ...updates,
+        updatedAt: new Date()
+      };
+      this.updateTasksSubject();
+      this.saveTasksToStorage();
+    }
   }
 
   deleteTask(id: string): void {
-    this.http.delete(`${this.BASE_URL}/${id}`).subscribe({
-      next: () => this.fetchTasks(),
-      error: err => console.error('Delete task failed', err)
-    });
+    this.tasks = this.tasks.filter(task => task.id !== id);
+    this.updateTasksSubject();
+    this.saveTasksToStorage();
   }
 
-  getFilteredTasks(filter: TaskFilter): Observable<Task[]> {
-    return this.getTasks().pipe(
-      map(tasks => {
-        let filtered = [...tasks];
+  getFilteredTasks(filter: TaskFilter): Task[] {
+    let filteredTasks = [...this.tasks];
 
-        if (filter.status) filtered = filtered.filter(t => t.status === filter.status);
-        if (filter.priority) filtered = filtered.filter(t => t.priority === filter.priority);
-        if (filter.category) filtered = filtered.filter(t =>
-          t.category.toLowerCase().includes(filter.category!.toLowerCase())
-        );
-        if (filter.search) {
-          const term = filter.search.toLowerCase();
-          filtered = filtered.filter(t =>
-            t.title.toLowerCase().includes(term) || t.description.toLowerCase().includes(term)
-          );
+    if (filter.status) {
+      filteredTasks = filteredTasks.filter(task => task.status === filter.status);
+    }
+
+    if (filter.priority) {
+      filteredTasks = filteredTasks.filter(task => task.priority === filter.priority);
+    }
+
+    if (filter.category) {
+      filteredTasks = filteredTasks.filter(task => 
+        task.category.toLowerCase().includes(filter.category!.toLowerCase())
+      );
+    }
+
+    if (filter.search) {
+      const searchTerm = filter.search.toLowerCase();
+      filteredTasks = filteredTasks.filter(task => 
+        task.title.toLowerCase().includes(searchTerm) ||
+        task.description.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Sorting
+    if (filter.sortBy) {
+      filteredTasks.sort((a, b) => {
+        let aValue: any = a[filter.sortBy!];
+        let bValue: any = b[filter.sortBy!];
+
+        if (filter.sortBy === 'priority') {
+          const priorityOrder = { low: 1, medium: 2, high: 3, critical: 4 };
+          aValue = priorityOrder[a.priority];
+          bValue = priorityOrder[b.priority];
         }
 
-        if (filter.sortBy) {
-          filtered.sort((a, b) => {
-            let aVal: any = a[filter.sortBy!];
-            let bVal: any = b[filter.sortBy!];
-            if (filter.sortBy === 'priority') {
-              const order = { low: 1, medium: 2, high: 3, critical: 4 };
-              aVal = order[a.priority];
-              bVal = order[b.priority];
-            }
-            return filter.sortOrder === 'asc'
-              ? aVal < bVal ? -1 : aVal > bVal ? 1 : 0
-              : aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
-          });
-        }
+        if (aValue < bValue) return filter.sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return filter.sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
 
-        return filtered;
-      })
-    );
+    return filteredTasks;
   }
 
-  getCategories(): Observable<string[]> {
-  return this.http.get<string[]>(`${this.API_URL}/categories`);
-}
+  getCategories(): string[] {
+    const categories = [...new Set(this.tasks.map(task => task.category))];
+    return categories.filter(category => category.trim() !== '');
+  }
+
+  private generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
+
+  private updateTasksSubject(): void {
+    this.tasksSubject.next([...this.tasks]);
+  }
+
+  private loadTasksFromStorage(): void {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        const tasks = JSON.parse(stored);
+        this.tasks = tasks.map((task: any) => ({
+          ...task,
+          createdAt: new Date(task.createdAt),
+          updatedAt: new Date(task.updatedAt),
+          dueDate: task.dueDate ? new Date(task.dueDate) : null
+        }));
+        this.updateTasksSubject();
+      }
+    } catch (error) {
+      console.error('Error loading tasks from storage:', error);
+    }
+  }
+
+  private saveTasksToStorage(): void {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.tasks));
+    } catch (error) {
+      console.error('Error saving tasks to storage:', error);
+    }
+  }
 }

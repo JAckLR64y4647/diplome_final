@@ -1,7 +1,7 @@
 import { Component, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TaskFilter } from '../../models/task.model';
+import { TaskFilter, TaskStatus, TaskPriority } from '../../models/task.model';
 import { TaskService } from '../../services/task.service';
 
 @Component({
@@ -75,7 +75,113 @@ import { TaskService } from '../../services/task.service';
       </div>
     </div>
   `,
-  styles: [/* залишаємо як є */]
+  styles: [`
+    .filters-container {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .filters-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .filters-header h3 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .btn-clear {
+      background: #f3f4f6;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-clear:hover {
+      background: #e5e7eb;
+    }
+
+    .search-container {
+      margin-bottom: 1.5rem;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .filter-groups {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .filter-group label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .filter-select {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      background: white;
+      transition: all 0.2s ease;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    @media (max-width: 768px) {
+      .filters-container {
+        padding: 1rem;
+      }
+
+      .filter-groups {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .filters-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+      }
+    }
+  `]
 })
 export class TaskFiltersComponent implements OnInit {
   @Output() filtersChange = new EventEmitter<TaskFilter>();
@@ -109,8 +215,6 @@ export class TaskFiltersComponent implements OnInit {
   }
 
   private updateCategories() {
-    this.taskService.getCategories().subscribe(categories => {
-      this.categories = categories;
-    });
+    this.categories = this.taskService.getCategories();
   }
 }

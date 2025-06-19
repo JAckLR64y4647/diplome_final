@@ -3,21 +3,20 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { User, UserRole } from '../../models/user.model';
-import { EditUserComponent } from '../users/edit-user.component';
 
 @Component({
   selector: 'app-users-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, EditUserComponent],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="users-container">
       <div class="users-header">
         <div class="header-content">
           <h2>Team Members</h2>
-          <p>Manage your team members and their permissions</p>
+          <p>Manage your team and user permissions</p>
         </div>
-        <button class="btn btn-primary" (click)="addUser()">
-          ➕ Add User
+        <button class="btn btn-primary" (click)="openInviteModal()">
+          ➕ Invite User
         </button>
       </div>
 
@@ -92,22 +91,61 @@ import { EditUserComponent } from '../users/edit-user.component';
         </div>
       </div>
 
-      <!-- Edit User Modal -->
-      <app-edit-user 
-        [show]="showEditModal" 
-        [user]="selectedUser"
-        [currentUserRole]="currentUser?.role || UserRole.USER"
-        (saveUser)="onSaveUser($event)"
-        (closeModal)="closeEditModal()"
-      ></app-edit-user>
+      <!-- Invite Modal -->
+      <div class="modal-overlay" *ngIf="showInviteModal" (click)="closeInviteModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3>Invite New User</h3>
+            <button class="modal-close" (click)="closeInviteModal()">&times;</button>
+          </div>
 
-      <!-- Add User Modal -->
-      <app-edit-user 
-        [show]="showAddModal" 
-        [currentUserRole]="currentUser?.role || UserRole.USER"
-        (saveUser)="onAddUser($event)"
-        (closeModal)="closeAddModal()"
-      ></app-edit-user>
+          <form (ngSubmit)="sendInvite()" #inviteForm="ngForm" class="invite-form">
+            <div class="form-group">
+              <label for="inviteEmail">Email Address</label>
+              <input
+                type="email"
+                id="inviteEmail"
+                name="inviteEmail"
+                [(ngModel)]="inviteData.email"
+                required
+                email
+                placeholder="Enter email address"
+                class="form-control"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="inviteRole">Role</label>
+              <select id="inviteRole" name="inviteRole" [(ngModel)]="inviteData.role" class="form-control">
+                <option value="user">User</option>
+                <option value="manager">Manager</option>
+                <option value="admin"  *ngIf="currentUser?.role === 'admin'">Admin</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="inviteMessage">Personal Message (Optional)</label>
+              <textarea
+                id="inviteMessage"
+                name="inviteMessage"
+                [(ngModel)]="inviteData.message"
+                placeholder="Add a personal message to the invitation..."
+                rows="3"
+                class="form-control"
+              ></textarea>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" (click)="closeInviteModal()">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" [disabled]="!inviteForm.form.valid">
+                Send Invitation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -156,8 +194,18 @@ import { EditUserComponent } from '../users/edit-user.component';
     }
 
     .btn-primary:hover {
-      background: var(--color-primary-dark);
+      background: var(--color-secondary);
       transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--color-background);
+      color: var(--color-text);
+      border: 1px solid var(--color-border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--color-border);
     }
 
     .users-filters {
@@ -406,6 +454,110 @@ import { EditUserComponent } from '../users/edit-user.component';
       font-size: 0.875rem;
     }
 
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .modal-content {
+      background: var(--color-surface);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--color-border);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .modal-close:hover {
+      background: var(--color-background);
+      color: var(--color-text);
+    }
+
+    .invite-form {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--color-text);
+      font-size: 0.875rem;
+    }
+
+    .form-control {
+      padding: 0.75rem;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+      background: var(--color-background);
+      color: var(--color-text);
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      padding-top: 1rem;
+      border-top: 1px solid var(--color-border);
+    }
+
     @media (max-width: 768px) {
       .users-container {
         padding: 1rem;
@@ -425,6 +577,10 @@ import { EditUserComponent } from '../users/edit-user.component';
       .users-grid {
         grid-template-columns: 1fr;
       }
+
+      .modal-actions {
+        flex-direction: column;
+      }
     }
   `]
 })
@@ -434,39 +590,67 @@ export class UsersListComponent implements OnInit {
   filteredUsers: User[] = [];
   searchTerm = '';
   roleFilter = '';
-  
-  showEditModal = false;
-  showAddModal = false;
-  selectedUser: User | null = null;
-  
-  UserRole = UserRole;
-  API_URL = 'https://j77dm4enbe.execute-api.eu-north-1.amazonaws.com/k3r5irs';
+  showInviteModal = false;
+
+  inviteData = {
+    email: '',
+    role: UserRole.USER,
+    message: ''
+  };
 
   constructor(private authService: AuthService) {}
 
   ngOnInit() {
     this.authService.getAuthState().subscribe(state => {
       this.currentUser = state.user;
-      this.loadUsers();
     });
+
+    this.loadUsers();
   }
 
   loadUsers() {
-    fetch(`${this.API_URL}/users`)
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to fetch users');
-        return response.json();
-      })
-      .then(data => {
-        this.allUsers = data;
+    // In a real app, this would fetch from a users service
+    // For demo purposes, we'll create some mock users
+    this.allUsers = [
+      {
+        id: 'user-1',
+        email: 'john.doe@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        role: UserRole.MANAGER,
+        createdAt: new Date('2024-01-15'),
+        updatedAt: new Date('2024-12-20'),
+        isOnline: true
+      },
+      {
+        id: 'user-2',
+        email: 'jane.smith@example.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: UserRole.USER,
+        createdAt: new Date('2024-02-10'),
+        updatedAt: new Date('2024-12-19'),
+        isOnline: false,
+        lastSeen: new Date('2024-12-19')
+      },
+      {
+        id: 'user-3',
+        email: 'mike.wilson@example.com',
+        firstName: 'Mike',
+        lastName: 'Wilson',
+        role: UserRole.USER,
+        createdAt: new Date('2024-03-05'),
+        updatedAt: new Date('2024-12-18'),
+        isOnline: true
+      }
+    ];
 
-        if (this.currentUser && !this.allUsers.find(u => u.id === this.currentUser!.id)) {
-          this.allUsers.unshift(this.currentUser);
-        }
+    // Add current user if not already in list
+    if (this.currentUser && !this.allUsers.find(u => u.id === this.currentUser!.id)) {
+      this.allUsers.unshift(this.currentUser);
+    }
 
-        this.filterUsers();
-      })
-      .catch(error => console.error('Error loading users:', error));
+    this.filterUsers();
   }
 
   filterUsers() {
@@ -482,109 +666,81 @@ export class UsersListComponent implements OnInit {
     });
   }
 
-  onAddUser(newUser: User) {
-    newUser.createdAt = new Date();
-    newUser.updatedAt = new Date();
-    newUser.isOnline = false;
-
-    fetch(`${this.API_URL}/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newUser)
-    })
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to add user');
-        return response.json();
-      })
-      .then(createdUser => {
-        this.allUsers.push(createdUser);
-        this.filterUsers();
-        this.closeAddModal();
-      })
-      .catch(error => console.error('Add user failed:', error));
+  openInviteModal() {
+    this.showInviteModal = true;
+    this.inviteData = {
+      email: '',
+      role: UserRole.USER,
+      message: ''
+    };
   }
 
-  onSaveUser(updatedUser: User) {
-    fetch(`${this.API_URL}/users/${updatedUser.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedUser)
-    })
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to update user');
-        const index = this.allUsers.findIndex(u => u.id === updatedUser.id);
-        if (index !== -1) this.allUsers[index] = updatedUser;
-        this.filterUsers();
-        this.closeEditModal();
-      })
-      .catch(error => console.error('Update failed:', error));
+  closeInviteModal() {
+    this.showInviteModal = false;
   }
 
-  removeUser(user: User) {
-    if (!confirm(`Are you sure you want to remove ${user.firstName} ${user.lastName}?`)) return;
-
-    fetch(`${this.API_URL}/users/${user.id}`, {
-      method: 'DELETE'
-    })
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to delete user');
-        this.allUsers = this.allUsers.filter(u => u.id !== user.id);
-        this.filterUsers();
-      })
-      .catch(error => console.error('Delete failed:', error));
-  }
-
-  closeAddModal() {
-    this.showAddModal = false;
-  }
-
-  closeEditModal() {
-    this.showEditModal = false;
-    this.selectedUser = null;
-  }
-
-  addUser() {
-    this.showAddModal = true;
+  sendInvite() {
+    // In a real app, this would send an invitation email
+    alert(`Invitation sent to ${this.inviteData.email} with role: ${this.inviteData.role}`);
+    this.closeInviteModal();
   }
 
   editUser(user: User) {
-    this.selectedUser = { ...user };
-    this.showEditModal = true;
+    // In a real app, this would open an edit modal
+    alert(`Edit user: ${user.firstName} ${user.lastName}`);
   }
 
-  getInitials(user: User): string {
-    return (user.firstName[0] + user.lastName[0]).toUpperCase();
-  }
-
-  getRoleLabel(role: UserRole): string {
-    switch (role) {
-      case 'admin': return 'Admin';
-      case 'manager': return 'Manager';
-      case 'user': return 'User';
-      default: return 'Unknown';
+  removeUser(user: User) {
+    if (confirm(`Are you sure you want to remove ${user.firstName} ${user.lastName} from the team?`)) {
+      this.allUsers = this.allUsers.filter(u => u.id !== user.id);
+      this.filterUsers();
     }
   }
 
+  canManageUser(user: User): boolean {
+    if (!this.currentUser) return false;
+    if (user.id === this.currentUser.id) return false;
+    
+    // Only admins and managers can manage users
+    return this.currentUser.role === UserRole.ADMIN || 
+           (this.currentUser.role === UserRole.MANAGER && user.role === UserRole.USER);
+  }
+
+  getInitials(user: User): string {
+    return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+  }
+
+  getRoleLabel(role: UserRole): string {
+    const labels = {
+      'admin': 'Admin',
+      'manager': 'Manager',
+      'user': 'User'
+    };
+    return labels[role];
+  }
+
   formatDate(date: Date): string {
-    return new Date(date).toLocaleDateString();
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric'
+    });
   }
 
   formatRelativeDate(date: Date): string {
     const now = new Date();
-    const d = new Date(date);
-    const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  }
-
-  canManageUser(user: User): boolean {
-    return this.currentUser?.role === 'admin' || this.currentUser?.id === user.id;
+    const diff = now.getTime() - new Date(date).getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 7) return `${days} days ago`;
+    return `${Math.floor(days / 7)} weeks ago`;
   }
 
   getEmptyStateMessage(): string {
-    if (this.searchTerm || this.roleFilter) return 'Try adjusting your filters or search.';
-    return 'No users have been added yet.';
+    if (this.searchTerm || this.roleFilter) {
+      return 'Try adjusting your search criteria or filters.';
+    }
+    return 'Invite team members to start collaborating.';
   }
 }
