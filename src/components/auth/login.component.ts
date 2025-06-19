@@ -16,7 +16,7 @@ import { LoginCredentials } from '../../models/user.model';
           <p>Sign in to your TaskFlow account</p>
           <div class="demo-box">
             <h3>Demo Credentials:</h3>
-            <p><strong>Email:</strong> admintaskflow.com</p>
+            <p><strong>Email:</strong> admin&#64;taskflow.com</p>
             <p><strong>Password:</strong> admin123</p>
           </div>
         </div>

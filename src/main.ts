@@ -429,9 +429,12 @@ export class App implements OnInit {
     this.applyFilters();
   }
 
-  applyFilters() {
-    this.filteredTasks = this.taskService.getFilteredTasks(this.currentFilters);
-  }
+ applyFilters() {
+  this.taskService.getFilteredTasks(this.currentFilters).subscribe(tasks => {
+    this.filteredTasks = tasks;
+  });
+}
+
 
   // Helper methods
   getTasksTitle(): string {

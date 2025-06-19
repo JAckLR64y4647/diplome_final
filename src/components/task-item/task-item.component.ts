@@ -77,7 +77,6 @@ import { Task, TaskStatus, TaskPriority } from '../../models/task.model';
     </div>
   `,
   styles: [`
-    /* стили без изменений, можно вставить свои из твоего примера */
     .task-item {
       background: white;
       border-radius: 12px;
