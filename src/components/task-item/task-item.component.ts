@@ -253,7 +253,6 @@ import { Task, TaskStatus, TaskPriority } from '../../models/task.model';
   `]
 })
 export class TaskItemComponent {
-  // Чтобы шаблон видел enum TaskStatus
   TaskStatus = TaskStatus;
 
   @Input() task!: Task;
